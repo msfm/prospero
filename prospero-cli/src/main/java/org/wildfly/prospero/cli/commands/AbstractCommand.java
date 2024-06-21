@@ -17,6 +17,7 @@
 
 package org.wildfly.prospero.cli.commands;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -71,6 +72,17 @@ public abstract class AbstractCommand implements Callable<Integer> {
 
     static Path determineInstallationDirectory(Optional<Path> directoryOption, Path currentDir) throws ArgumentParsingException {
         Path installationDirectory = directoryOption.orElse(currentDir).toAbsolutePath();
+        if (Files.isSymbolicLink(installationDirectory)) {
+            // if installationDirectory is symbolic link, obtain real path
+            try {
+                installationDirectory = installationDirectory.toRealPath();
+            } catch (IOException e) {
+                throw new ArgumentParsingException("Target server path " + installationDirectory + " is symbolic link, but the real path doesn't exist (or I/O error occurred)", e);
+            }
+        }
+        if (!Files.isDirectory(installationDirectory)) {
+            throw new ArgumentParsingException("Target server path [" + installationDirectory + "] is not directory");
+        }
 
         // Check if the directory option was provided
         if (directoryOption.isPresent()) {
